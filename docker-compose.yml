@@ -1,43 +1,21 @@
-version: "3.8"
-
 services:
-  n8n:
-    image: n8nio/n8n:latest
-    container_name: n8n
-    restart: always
+  postgres:
+    image: postgres:16-alpine
+    container_name: messengers_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-messengers}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-messengers}
+      POSTGRES_DB: ${POSTGRES_DB:-messengers_analyze}
     ports:
-      - "5678:5678"
-    environment:
-      - TZ=Asia/Almaty
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=agifulldestroyer
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - WEBHOOK_URL=https://exceptional-sustainable-establishment-ask.trycloudflare.com #base - http://localhost:5678  
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
-      - ./n8n_data:/home/node/.n8n
-    user: "1000:1000"
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-messengers} -d ${POSTGRES_DB:-messengers_analyze}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: cloudflared
-    restart: unless-stopped
-    command: tunnel --no-autoupdate --url http://n8n:5678
-    depends_on:
-      - n8n
-
-  telethon:
-    build:
-      context: .
-      dockerfile: telethon/Dockerfile
-    container_name: telethon
-    restart: unless-stopped
-    environment:
-      - TELETHON_API_ID=39611602
-      - TELETHON_API_HASH=10d395bc15a3d79ed1cb7ce9f7da35ba
-      - WEBHOOK_URL=http://n8n:5678/webhook-test/75607a86-8b53-45b0-bc92-dfdb39778af2
-      - TELETHON_SESSION=/data/telethon
-    volumes:
-      - ./telethon_data:/data
+volumes:
+  postgres_data:
