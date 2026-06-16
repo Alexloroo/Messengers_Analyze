@@ -33,6 +33,15 @@ _load_env_file(PROJECT_ROOT / ".env")
 
 TELETHON_API_ID = os.getenv("TELETHON_API_ID")
 TELETHON_API_HASH = os.getenv("TELETHON_API_HASH")
+
+# Support both standard (GROQ_API_KEY / GROQ_MODEL) and legacy (GROQ_API / MODEL) env names.
+GROQ_API_KEY = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_API")
+GROQ_MODEL = os.getenv("GROQ_MODEL") or os.getenv("MODEL", "llama-3.3-70b-versatile")
+
+# Batch-анализ информационных сообщений (daily_analysis.py)
+ANALYSIS_BATCH_SIZE = int(os.getenv("ANALYSIS_BATCH_SIZE", "100"))
+ANALYSIS_MAX_WORKERS = int(os.getenv("ANALYSIS_MAX_WORKERS", "5"))
+
 SESSION_NAME = os.getenv("TELETHON_SESSION", str(DATA_DIR / "telethon"))
 
 DATABASE_URL = os.getenv(

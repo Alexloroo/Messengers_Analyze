@@ -9,3 +9,5 @@ __pycache__/
 .vscode/
 
 telethon_data/
+
+messengers.session.sql

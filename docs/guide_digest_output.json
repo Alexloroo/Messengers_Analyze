@@ -1,0 +1,18 @@
+{
+  "title": "Нет новостей",
+  "sections": [
+    "За выбранный период подходящих сообщений не найдено."
+  ],
+  "action_items": [],
+  "critic_score": {
+    "overall": 7,
+    "clarity": 9,
+    "completeness": 5,
+    "hallucination_risk": 1
+  },
+  "revision_count": 0,
+  "message_count": 3,
+  "kept_count": 0,
+  "cluster_count": 0,
+  "generated_at": "2026-06-15T11:15:24.177288+00:00"
+}

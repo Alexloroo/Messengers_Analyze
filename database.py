@@ -2,15 +2,24 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, func, inspect, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
 
+logger = logging.getLogger(__name__)
+
 from config import DATABASE_URL
+
+
+# JSONB для PostgreSQL, обычный JSON для SQLite (dev-режим).
+_keywords_type = JSONB if "postgresql" in DATABASE_URL else JSON
 
 
 class Base(DeclarativeBase):
@@ -64,10 +73,16 @@ class Message(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utc_now, index=True
     )
+    analyzed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
 
     chat: Mapped["Chat"] = relationship(back_populates="messages")
     tags: Mapped[list["Tag"]] = relationship(
         back_populates="message", cascade="all, delete-orphan", lazy="selectin"
+    )
+    analysis: Mapped["AnalysisResult | None"] = relationship(
+        back_populates="message", uselist=False
     )
 
     def set_raw(self, data: dict[str, Any]) -> None:
@@ -90,6 +105,26 @@ class Tag(Base):
     message: Mapped["Message"] = relationship(back_populates="tags")
 
 
+class AnalysisResult(Base):
+    """LLM-анализ информационного сообщения."""
+
+    __tablename__ = "analysis_results"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    message_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False, unique=True, index=True
+    )
+    usefulness_class: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)
+    keywords: Mapped[list[str] | None] = mapped_column(_keywords_type, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    analyzed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=_utc_now, index=True
+    )
+    model_used: Mapped[str | None] = mapped_column(String(50), nullable=True)
+
+    message: Mapped["Message"] = relationship(back_populates="analysis")
+
+
 engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -98,6 +133,31 @@ async def init_db() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+        # --- Простые миграции для уже существующих БД ---
+        def _column_names(sync_conn, table_name: str) -> list[str]:
+            return [c["name"] for c in inspect(sync_conn).get_columns(table_name)]
+
+        messages_cols = await conn.run_sync(_column_names, "messages")
+        if "analyzed_at" not in messages_cols:
+            dialect = engine.dialect.name
+            if dialect == "postgresql":
+                await conn.execute(
+                    text(
+                        "ALTER TABLE messages ADD COLUMN IF NOT EXISTS analyzed_at TIMESTAMP WITH TIME ZONE"
+                    )
+                )
+            else:
+                await conn.execute(
+                    text("ALTER TABLE messages ADD COLUMN analyzed_at DATETIME")
+                )
+            logger.info("Добавлен столбец analyzed_at в messages")
+
 
 async def get_session() -> AsyncSession:
     return AsyncSessionLocal()
+
+
+if __name__ == "__main__":
+    # Позволяет создать/обновить таблицы в БД командой:
+    #   python database.py
+    asyncio.run(init_db())
