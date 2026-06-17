@@ -97,12 +97,13 @@ def check_graph_pipeline() -> bool:
     """Test the full analysis pipeline."""
     print("\n📊 Testing LangGraph pipeline...\n")
     try:
-        from graph_pipeline import analyze_message
+        import asyncio
+        from daily_analysis import analyze_message
 
-        result = analyze_message(
+        result = asyncio.run(analyze_message(
             raw_text="Вышел новый релиз Python 3.13 с улучшенным GIL.",
             chat_title="Python News",
-        )
+        ))
 
         ok = result.get("is_useful", False) and len(result.get("summary", "")) > 5
         return _check(

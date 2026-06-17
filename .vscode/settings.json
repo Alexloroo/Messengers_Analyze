@@ -1,0 +1,15 @@
+{
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5433,
+            "driver": "PostgreSQL",
+            "password": "messengers",
+            "database": "messengers_analyze",
+            "username": "messengers",
+            "name": "messengers"
+        }
+    ]
+}

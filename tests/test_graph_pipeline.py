@@ -13,7 +13,7 @@ Run with: pytest tests/test_graph_pipeline.py -v
 
 import pytest
 
-from graph_pipeline import analyze_message, build_analysis_graph
+from daily_analysis import analyze_message, build_analysis_graph
 
 
 # ---------------------------------------------------------------------------
@@ -31,11 +31,12 @@ def test_graph_compiles():
 # Test: Spam detection
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 @pytest.mark.langsmith
 @pytest.mark.llm
-def test_spam_is_filtered(langsmith_configured, groq_configured):
+async def test_spam_is_filtered(langsmith_configured, groq_configured):
     """Verify that spam messages are filtered out by the pipeline."""
-    result = analyze_message(
+    result = await analyze_message(
         raw_text="🎰 ЗАРАБОТАЙ 100000$ ЗА ДЕНЬ!!! Жми сюда >>> bit.ly/scam",
         chat_title="Random Chat",
     )
@@ -50,11 +51,12 @@ def test_spam_is_filtered(langsmith_configured, groq_configured):
 # Test: News classification + summary
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 @pytest.mark.langsmith
 @pytest.mark.llm
-def test_news_message_analysis(langsmith_configured, groq_configured):
+async def test_news_message_analysis(langsmith_configured, groq_configured):
     """Verify that a news message is properly classified and summarized."""
-    result = analyze_message(
+    result = await analyze_message(
         raw_text=(
             "🔥 Вышла новая версия Python 3.13! Основные изменения: "
             "улучшенный GIL, новый JIT-компилятор, обновлённый модуль typing. "
@@ -76,11 +78,12 @@ def test_news_message_analysis(langsmith_configured, groq_configured):
 # Test: Task message with deadline extraction
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 @pytest.mark.langsmith
 @pytest.mark.llm
-def test_task_message_analysis(langsmith_configured, groq_configured):
+async def test_task_message_analysis(langsmith_configured, groq_configured):
     """Verify that a task message is classified and key info is summarized."""
-    result = analyze_message(
+    result = await analyze_message(
         raw_text=(
             "Ребят, нужно до пятницы подготовить презентацию по проекту. "
             "@alexey, ты берёшь слайды по архитектуре, @maria — по тестированию. "
@@ -101,18 +104,19 @@ def test_task_message_analysis(langsmith_configured, groq_configured):
 # Test: Output structure validation
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 @pytest.mark.langsmith
 @pytest.mark.llm
-def test_output_structure(langsmith_configured, groq_configured):
+async def test_output_structure(langsmith_configured, groq_configured):
     """Verify that the pipeline output contains all expected fields."""
-    result = analyze_message(
+    result = await analyze_message(
         raw_text="Обсуждение новой архитектуры микросервисов в среду в 15:00.",
         chat_title="Backend Team",
     )
 
     required_fields = [
         "raw_text", "chat_title", "is_spam", "category",
-        "summary", "quality_score", "quality_feedback",
+        "summary", "keywords", "quality_score", "quality_feedback",
         "retry_count", "is_useful",
     ]
     for field in required_fields:
@@ -122,6 +126,7 @@ def test_output_structure(langsmith_configured, groq_configured):
     assert isinstance(result["is_useful"], bool)
     assert isinstance(result["quality_score"], float)
     assert isinstance(result["retry_count"], int)
+    assert isinstance(result["keywords"], list)
     print(f"✅ All {len(required_fields)} required fields present in output.")
 
 
@@ -129,11 +134,12 @@ def test_output_structure(langsmith_configured, groq_configured):
 # Test: Discussion classification
 # ---------------------------------------------------------------------------
 
+@pytest.mark.asyncio
 @pytest.mark.langsmith
 @pytest.mark.llm
-def test_discussion_message(langsmith_configured, groq_configured):
+async def test_discussion_message(langsmith_configured, groq_configured):
     """Verify that a discussion message is correctly analyzed."""
-    result = analyze_message(
+    result = await analyze_message(
         raw_text=(
             "Кто-нибудь пробовал новый FastAPI 0.115? Говорят, там наконец "
             "нормально сделали dependency injection. Стоит ли переходить с Flask?"
