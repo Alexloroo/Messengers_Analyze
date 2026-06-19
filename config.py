@@ -38,6 +38,13 @@ TELETHON_API_HASH = os.getenv("TELETHON_API_HASH")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY") or os.getenv("GROQ_API")
 GROQ_MODEL = os.getenv("GROQ_MODEL") or os.getenv("MODEL", "llama-3.3-70b-versatile")
 
+# DeepSeek
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+
+# Active LLM provider: "groq" or "deepseek"
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "groq").lower()
+LLM_MODEL = os.getenv("LLM_MODEL")  # Optional override for the model name
+
 # Batch-анализ информационных сообщений (daily_analysis.py)
 ANALYSIS_BATCH_SIZE = int(os.getenv("ANALYSIS_BATCH_SIZE", "100"))
 ANALYSIS_MAX_WORKERS = int(os.getenv("ANALYSIS_MAX_WORKERS", "5"))

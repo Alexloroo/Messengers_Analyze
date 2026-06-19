@@ -38,11 +38,25 @@ def langsmith_configured():
 
 @pytest.fixture(scope="session")
 def groq_configured():
-    """Check that Groq is properly configured."""
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
-        pytest.skip("GROQ_API_KEY not set — skipping LLM tests")
+    """Check that the active LLM provider is properly configured.
+
+    Despite the name (kept for backward compatibility), this fixture
+    validates whichever provider is set via LLM_PROVIDER.
+    """
+    provider = os.getenv("LLM_PROVIDER", "groq").lower()
+    if provider == "deepseek":
+        if not os.getenv("DEEPSEEK_API_KEY"):
+            pytest.skip("DEEPSEEK_API_KEY not set — skipping LLM tests")
+    else:
+        if not os.getenv("GROQ_API_KEY"):
+            pytest.skip("GROQ_API_KEY not set — skipping LLM tests")
     return True
+
+
+@pytest.fixture(scope="session")
+def llm_configured(groq_configured):
+    """Alias for groq_configured — checks the active LLM provider."""
+    return groq_configured
 
 
 # Sample messages for tests

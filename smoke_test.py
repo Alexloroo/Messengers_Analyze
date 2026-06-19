@@ -29,16 +29,42 @@ def _check(name: str, ok: bool, detail: str = "") -> bool:
     return ok
 
 
+def _get_provider() -> str:
+    return os.getenv("LLM_PROVIDER", "groq").lower()
+
+
+def _has_provider_key() -> bool:
+    provider = _get_provider()
+    if provider == "deepseek":
+        return bool(os.getenv("DEEPSEEK_API_KEY"))
+    return bool(os.getenv("GROQ_API_KEY"))
+
+
 def check_env_vars() -> bool:
     """Check that all required environment variables are set."""
     print("\n🔍 Checking environment variables...\n")
     all_ok = True
+    provider = _get_provider()
 
     all_ok &= _check(
-        "GROQ_API_KEY",
-        bool(os.getenv("GROQ_API_KEY")),
-        "set" if os.getenv("GROQ_API_KEY") else "MISSING — add to .env",
+        "LLM_PROVIDER",
+        provider in ("groq", "deepseek"),
+        f"{provider}",
     )
+
+    if provider == "groq":
+        all_ok &= _check(
+            "GROQ_API_KEY",
+            bool(os.getenv("GROQ_API_KEY")),
+            "set" if os.getenv("GROQ_API_KEY") else "MISSING — https://console.groq.com/keys",
+        )
+    elif provider == "deepseek":
+        all_ok &= _check(
+            "DEEPSEEK_API_KEY",
+            bool(os.getenv("DEEPSEEK_API_KEY")),
+            "set" if os.getenv("DEEPSEEK_API_KEY") else "MISSING — https://platform.deepseek.com/api_keys",
+        )
+
     all_ok &= _check(
         "LANGSMITH_API_KEY",
         bool(os.getenv("LANGSMITH_API_KEY")),
@@ -76,16 +102,17 @@ def check_langsmith_connection() -> bool:
 
 def check_llm_call() -> bool:
     """Test a simple LLM call with tracing."""
-    print("\n🤖 Testing LLM call with tracing...\n")
+    provider = _get_provider()
+    print(f"\n🤖 Testing LLM call via {provider}...\n")
     try:
         from llm_provider import get_chat_model
         from langchain_core.messages import HumanMessage
 
-        llm = get_chat_model(model="llama-3.1-8b-instant", temperature=0.0)
+        llm = get_chat_model(temperature=0.0)
         response = llm.invoke([HumanMessage(content="Respond with exactly: OK")])
 
         return _check(
-            "LLM Call (llama-3.1-8b-instant)",
+            f"LLM Call ({provider})",
             "ok" in response.content.lower(),
             f"response: '{response.content.strip()}'",
         )
@@ -132,11 +159,12 @@ def main():
         print("\n⏭️  Skipping LangSmith connection test (no API key)")
         results.append(False)
 
-    if os.getenv("GROQ_API_KEY"):
+    if _has_provider_key():
         results.append(check_llm_call())
         results.append(check_graph_pipeline())
     else:
-        print("\n⏭️  Skipping LLM and pipeline tests (no Groq key)")
+        provider = _get_provider()
+        print(f"\n⏭️  Skipping LLM and pipeline tests (no {provider} key)")
         results.append(False)
         results.append(False)
 

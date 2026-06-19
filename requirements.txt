@@ -11,10 +11,12 @@ asyncpg>=0.30.0
 langchain>=0.3.0
 langchain-core>=0.3.0
 langchain-groq>=0.1.0
+langchain-openai>=0.3.0
 langgraph>=0.4.0
 
-# === Groq ===
+# === LLM backends ===
 groq>=0.9.0
+openai>=1.45.0
 
 # === LangSmith (Monitoring & Evaluation) ===
 langsmith[pytest]>=0.3.0
