@@ -53,7 +53,6 @@ class MessageAnalysisState(TypedDict):
     chat_title: str
 
     # Processing outputs
-    is_spam: bool
     category: str  # news | discussion | task | announcement | article | other | spam
     summary: str
     keywords: list[str]
@@ -77,26 +76,6 @@ MAX_RETRIES = 2
 # ---------------------------------------------------------------------------
 
 
-async def filter_node(state: MessageAnalysisState) -> dict:
-    """Определить, является ли сообщение спамом/шумом или потенциально полезным."""
-    llm = get_chat_model(model=GROQ_MODEL, temperature=0.0)
-
-    response = await llm.ainvoke([
-        SystemMessage(content=(
-            "You are a spam filter for Telegram messages. "
-            "Respond with EXACTLY one word: 'spam' or 'useful'. "
-            "Mark as spam: ads, promotions, empty forwards, stickers-only, "
-            "join/leave notifications, bot commands. "
-            "Mark as useful: news, discussions, tasks, announcements, articles."
-        )),
-        HumanMessage(content=f"Chat: {state['chat_title']}\nMessage: {state['raw_text']}"),
-    ])
-
-    is_spam = "spam" in response.content.strip().lower()
-    logger.info("Filter result for message: %s", "spam" if is_spam else "useful")
-    return {"is_spam": is_spam}
-
-
 async def classify_node(state: MessageAnalysisState) -> dict:
     """Классифицировать сообщение по категории."""
     llm = get_chat_model(model=GROQ_MODEL, temperature=0.0)
@@ -105,13 +84,13 @@ async def classify_node(state: MessageAnalysisState) -> dict:
         SystemMessage(content=(
             "Classify the following Telegram message into EXACTLY one category. "
             "Respond with ONLY the category name, nothing else.\n"
-            "Categories: news, discussion, task, announcement, article, other"
+            "Categories: news, discussion, LLMs,jobs, meetup, other"
         )),
         HumanMessage(content=f"Chat: {state['chat_title']}\nMessage: {state['raw_text']}"),
     ])
 
     category = response.content.strip().lower()
-    valid_categories = {"news", "discussion", "task", "announcement", "article", "other"}
+    valid_categories = {"news", "discussion", "LLMs", "jobs", "meetup", "other"}
     if category not in valid_categories:
         category = "other"
 
@@ -242,11 +221,7 @@ async def bump_retry_node(state: MessageAnalysisState) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def after_filter(state: MessageAnalysisState) -> str:
-    """Направить после спам-фильтра: спам — в конец, полезное — дальше."""
-    if state.get("is_spam", False):
-        return "end_spam"
-    return "classify"
+
 
 
 def after_critic(state: MessageAnalysisState) -> str:
@@ -276,25 +251,13 @@ def build_analysis_graph():
     """
     graph = StateGraph(MessageAnalysisState)
 
-    graph.add_node("filter", filter_node)
     graph.add_node("classify", classify_node)
     graph.add_node("summarize", summarize_node)
     graph.add_node("critic", critic_node)
     graph.add_node("mark_spam", mark_spam_node)
     graph.add_node("bump_retry", bump_retry_node)
 
-    graph.add_edge(START, "filter")
-
-    graph.add_conditional_edges(
-        "filter",
-        after_filter,
-        {
-            "end_spam": "mark_spam",
-            "classify": "classify",
-        },
-    )
-
-    graph.add_edge("mark_spam", END)
+    graph.add_edge(START, "classify")
     graph.add_edge("classify", "summarize")
     graph.add_edge("summarize", "critic")
 
@@ -330,7 +293,6 @@ async def analyze_message(
     initial_state: MessageAnalysisState = {
         "raw_text": raw_text,
         "chat_title": chat_title,
-        "is_spam": False,
         "category": "",
         "summary": "",
         "keywords": [],
@@ -355,8 +317,6 @@ def _utc_now() -> datetime:
 
 def _map_usefulness(state: MessageAnalysisState) -> str:
     """Сопоставить выход графа с классом полезности из daily_analysis."""
-    if state.get("is_spam"):
-        return "spam"
 
     category = state.get("category", "other")
     if category in ("news", "announcement", "task"):
@@ -396,7 +356,6 @@ async def analyze_one(
             initial_state: MessageAnalysisState = {
                 "raw_text": text[:4000],
                 "chat_title": chat_title,
-                "is_spam": False,
                 "category": "",
                 "summary": "",
                 "keywords": [],
