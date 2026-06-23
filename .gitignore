@@ -7,3 +7,5 @@ __pycache__/
 *.session
 .pytest_cache/
 .langsmith_cache/
+.venv
+.vscode
