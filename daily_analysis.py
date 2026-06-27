@@ -69,11 +69,35 @@ class MessageAnalysisState(TypedDict):
 # ---------------------------------------------------------------------------
 
 MAX_RETRIES = 2
+ERROR_RETRIES = 3
+
+# ---------------------------------------------------------------------------
+# Error Validation
+# ---------------------------------------------------------------------------
+def is_error(exc: Exception) -> int | None:
+    status = getattr(exc, "status", None)
+    if isinstance(status, int):
+        return status
+    text = str(exc).lower()
+    if "429" in text:
+        return 429
+    return None
+
+
+
+
+
+
+
 
 
 # ---------------------------------------------------------------------------
 # Graph nodes
 # ---------------------------------------------------------------------------
+
+
+
+
 
 
 async def classify_node(state: MessageAnalysisState) -> dict:
@@ -364,8 +388,16 @@ async def analyze_one(
                 "retry_count": 0,
                 "is_useful": False,
             }
-            result = await graph.ainvoke(initial_state)
-            return result, message.id
+            for attempt in range(ERROR_RETRIES):
+                try:
+                    result = await graph.ainvoke(initial_state)
+                    return result, message.id
+                except Exception as exc:
+                    if is_error(exc) == 429 and attempt < ERROR_RETRIES - 1:
+                        await asyncio.sleep(4 **(1 + attempt))
+                        continue
+                    logger.exception("Ошибка анализа сообщения id=%s: %s", message.id, exc)
+                    return None  
         except Exception:
             logger.exception("Ошибка анализа сообщения id=%s", message.id)
             return None
