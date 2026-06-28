@@ -63,7 +63,7 @@ def llm_configured(groq_configured):
 SAMPLE_MESSAGES = {
     "news_ru": {
         "text": (
-            "🔥 Вышла новая версия Python 3.13! Основные изменения: "
+            "Вышла новая версия Python 3.13! Основные изменения: "
             "улучшенный GIL, новый JIT-компилятор, обновлённый модуль typing. "
             "Подробности на python.org"
         ),
@@ -72,7 +72,7 @@ SAMPLE_MESSAGES = {
         "expected_useful": True,
     },
     "spam": {
-        "text": "🎰 ЗАРАБОТАЙ 100000$ ЗА ДЕНЬ!!! Жми сюда >>> bit.ly/scam",
+        "text": "ЗАРАБОТАЙ 100000$ ЗА ДЕНЬ!!! Жми сюда >>> bit.ly/scam",
         "chat_title": "Random Chat",
         "expected_category": "spam",
         "expected_useful": False,
@@ -98,7 +98,7 @@ SAMPLE_MESSAGES = {
     },
     "announcement_ru": {
         "text": (
-            "📢 Внимание! Завтра с 10:00 до 12:00 будет проводиться плановое "
+            "Внимание! Завтра с 10:00 до 12:00 будет проводиться плановое "
             "обслуживание серверов. Все сервисы будут недоступны. "
             "Просьба сохранить свою работу заранее."
         ),

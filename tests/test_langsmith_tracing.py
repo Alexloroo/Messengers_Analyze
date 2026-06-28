@@ -26,7 +26,7 @@ def test_langsmith_connection(langsmith_configured):
     # and the endpoint is reachable
     projects = list(client.list_projects(limit=1))
     assert isinstance(projects, list), "Expected a list of projects from LangSmith"
-    print(f"✅ Connected to LangSmith. Found {len(projects)} project(s).")
+    print(f"Connected to LangSmith. Found {len(projects)} project(s).")
 
 
 # ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ def test_llm_call_is_traced(langsmith_configured, groq_configured):
 
     assert response.content is not None
     assert len(response.content) > 0
-    print(f"✅ LLM response: {response.content}")
+    print(f"LLM response: {response.content}")
 
 
 # ---------------------------------------------------------------------------
@@ -72,7 +72,7 @@ def test_traceable_decorator(langsmith_configured):
     assert result["processed"] is True
     assert result["has_deadline"] is True
     assert result["word_count"] > 0
-    print(f"✅ Traced custom function. Result: {result}")
+    print(f"Traced custom function. Result: {result}")
 
 
 # ---------------------------------------------------------------------------
@@ -88,8 +88,8 @@ def test_langsmith_project_exists(langsmith_configured):
     # Ensure the project exists (create if missing)
     try:
         client.read_project(project_name=project_name)
-        print(f"✅ Project '{project_name}' already exists in LangSmith.")
+        print(f"Project '{project_name}' already exists in LangSmith.")
     except Exception:
         # If the project doesn't exist, that's also OK for now —
         # it will be auto-created on first trace
-        print(f"ℹ️  Project '{project_name}' not found (will be auto-created on first trace).")
+        print(f"Project '{project_name}' not found (will be auto-created on first trace).")

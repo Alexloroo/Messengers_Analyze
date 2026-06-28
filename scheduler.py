@@ -3,7 +3,7 @@
 Запускает задачи (анализ сообщений и т.д.) по расписанию, настраиваемому
 через переменные окружения.
 
-Использует APScheduler 4.x (async-native).
+Использует APScheduler 3.x (AsyncIOScheduler).
 
 Пример запуска:
     python scheduler.py
@@ -11,6 +11,7 @@
 Переменные окружения для настройки расписания (см. .env.example):
     SCHEDULE_ANALYSIS_CRON  — cron-выражение (по умолчанию: каждый день в 03:00)
     SCHEDULE_ANALYSIS_INTERVAL_MINUTES — альтернатива: интервал в минутах
+    SCHEDULE_RUN_ON_START — запустить анализ сразу при старте (true/false)
 """
 
 from __future__ import annotations
@@ -36,13 +37,13 @@ logger = logging.getLogger(__name__)
 
 async def run_daily_analysis() -> None:
     """Обёртка для запуска batch-анализа как scheduled-задачи."""
-    logger.info("⏰ Запуск периодического анализа сообщений...")
+    logger.info("Запуск периодического анализа сообщений...")
     try:
         from daily_analysis import main as analysis_main
         await analysis_main()
-        logger.info("✅ Анализ завершён успешно")
+        logger.info("Анализ завершён успешно")
     except Exception:
-        logger.exception("❌ Ошибка при выполнении анализа")
+        logger.exception("Ошибка при выполнении анализа")
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +82,7 @@ async def main() -> None:
         from apscheduler.triggers.interval import IntervalTrigger
     except ImportError:
         logger.error(
-            "APScheduler не установлен. Выполните: pip install apscheduler>=3.10"
+            "APScheduler не установлен. Выполните: pip install 'apscheduler>=3.10,<4.0'"
         )
         sys.exit(1)
 
@@ -95,33 +96,36 @@ async def main() -> None:
         # Интервальный режим (удобно для разработки / частого запуска)
         minutes = int(interval_minutes)
         trigger = IntervalTrigger(minutes=minutes)
-        logger.info("📅 Анализ будет запускаться каждые %d мин.", minutes)
+        logger.info("Анализ будет запускаться каждые %d мин.", minutes)
     elif cron_expr:
         # Cron-режим
         cron_kwargs = _parse_cron(cron_expr)
         trigger = CronTrigger(**cron_kwargs)
-        logger.info("📅 Анализ по cron-расписанию: %s", cron_expr)
+        logger.info("Анализ по cron-расписанию: %s", cron_expr)
     else:
         # По умолчанию — каждый день в 03:00
         trigger = CronTrigger(hour=3, minute=0)
-        logger.info("📅 Анализ по умолчанию: каждый день в 03:00")
+        logger.info("Анализ по умолчанию: каждый день в 03:00")
 
     scheduler.add_job(
         run_daily_analysis,
         trigger=trigger,
         id="daily_analysis",
         name="Batch analysis of Telegram messages",
+        max_instances=1,          # не запускать новый анализ, пока не завершился текущий
         misfire_grace_time=3600,  # допускаем опоздание до 1 часа
     )
 
     # --- Запуск первого анализа сразу (если включено) ---
     run_on_start = os.getenv("SCHEDULE_RUN_ON_START", "false").lower() in ("1", "true", "yes")
     if run_on_start:
-        logger.info("🚀 Запускаем анализ сразу при старте (SCHEDULE_RUN_ON_START=true)...")
+        logger.info("Запускаем анализ сразу при старте (SCHEDULE_RUN_ON_START=true)...")
         scheduler.add_job(
             run_daily_analysis,
+            trigger="date",
             id="startup_analysis",
             name="Startup analysis run",
+            replace_existing=True,
         )
 
     # --- Graceful shutdown ---
@@ -139,19 +143,19 @@ async def main() -> None:
         signal.signal(signal.SIGINT, _handle_signal)
 
     scheduler.start()
-    logger.info("🟢 Планировщик запущен. Ожидание задач...")
+    logger.info("Планировщик запущен. Ожидание задач...")
 
     # Печатаем список запланированных задач
     for job in scheduler.get_jobs():
-        logger.info("  → %s | Следующий запуск: %s", job.name, job.next_run_time)
+        logger.info("  -> %s | Следующий запуск: %s", job.name, job.next_run_time)
 
     try:
         await stop_event.wait()
     except (KeyboardInterrupt, SystemExit):
         pass
     finally:
-        scheduler.shutdown(wait=False)
-        logger.info("🔴 Планировщик остановлен")
+        scheduler.shutdown(wait=True)
+        logger.info("Планировщик остановлен")
 
 
 if __name__ == "__main__":

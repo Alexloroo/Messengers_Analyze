@@ -21,7 +21,7 @@ _load_env_file(PROJECT_ROOT / ".env")
 
 
 def _check(name: str, ok: bool, detail: str = "") -> bool:
-    icon = "✅" if ok else "❌"
+    icon = "[OK]" if ok else "[FAIL]"
     msg = f"  {icon} {name}"
     if detail:
         msg += f" — {detail}"
@@ -42,7 +42,7 @@ def _has_provider_key() -> bool:
 
 def check_env_vars() -> bool:
     """Check that all required environment variables are set."""
-    print("\n🔍 Checking environment variables...\n")
+    print("\nChecking environment variables...\n")
     all_ok = True
     provider = _get_provider()
 
@@ -86,7 +86,7 @@ def check_env_vars() -> bool:
 
 def check_langsmith_connection() -> bool:
     """Test LangSmith API connectivity."""
-    print("\n🔗 Testing LangSmith connection...\n")
+    print("\nTesting LangSmith connection...\n")
     try:
         from langsmith import Client
         client = Client()
@@ -103,7 +103,7 @@ def check_langsmith_connection() -> bool:
 def check_llm_call() -> bool:
     """Test a simple LLM call with tracing."""
     provider = _get_provider()
-    print(f"\n🤖 Testing LLM call via {provider}...\n")
+    print(f"\nTesting LLM call via {provider}...\n")
     try:
         from llm_provider import get_chat_model
         from langchain_core.messages import HumanMessage
@@ -122,7 +122,7 @@ def check_llm_call() -> bool:
 
 def check_graph_pipeline() -> bool:
     """Test the full analysis pipeline."""
-    print("\n📊 Testing LangGraph pipeline...\n")
+    print("\nTesting LangGraph pipeline...\n")
     try:
         import asyncio
         from daily_analysis import analyze_message
@@ -156,7 +156,7 @@ def main():
     if os.getenv("LANGSMITH_API_KEY"):
         results.append(check_langsmith_connection())
     else:
-        print("\n⏭️  Skipping LangSmith connection test (no API key)")
+        print("\nSkipping LangSmith connection test (no API key)")
         results.append(False)
 
     if _has_provider_key():
@@ -164,7 +164,7 @@ def main():
         results.append(check_graph_pipeline())
     else:
         provider = _get_provider()
-        print(f"\n⏭️  Skipping LLM and pipeline tests (no {provider} key)")
+        print(f"\nSkipping LLM and pipeline tests (no {provider} key)")
         results.append(False)
         results.append(False)
 
@@ -172,10 +172,10 @@ def main():
     passed = sum(results)
     total = len(results)
     if all(results):
-        print(f"  🎉 All checks passed ({passed}/{total})!")
+        print(f"  All checks passed ({passed}/{total})!")
         print("  You can now run: pytest tests/ -v")
     else:
-        print(f"  ⚠️  {passed}/{total} checks passed.")
+        print(f"  {passed}/{total} checks passed.")
         print("  Fix the issues above and re-run this script.")
     print("=" * 60)
 
