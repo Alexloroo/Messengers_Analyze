@@ -42,5 +42,23 @@ services:
       retries: 3
       start_period: 20s
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: messengers_scheduler
+    restart: unless-stopped
+    command: ["python", "scheduler.py"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-messengers}:${POSTGRES_PASSWORD:-messengers}@postgres:5432/${POSTGRES_DB:-messengers_analyze}
+      # Расписание: каждый день в 03:00 (можно переопределить в .env)
+      SCHEDULE_ANALYSIS_CRON: ${SCHEDULE_ANALYSIS_CRON:-0 3 * * *}
+      SCHEDULE_RUN_ON_START: ${SCHEDULE_RUN_ON_START:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
